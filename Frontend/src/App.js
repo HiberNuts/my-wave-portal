@@ -2,6 +2,7 @@ import * as React from "react";
 import { ethers } from "ethers";
 import "./App.css";
 import abi from "./utils/WavePortal.json";
+import { Button, Input } from "web3uikit";
 
 export default function App() {
   const [currentAccount, setcurrentAccount] = React.useState("");
@@ -9,7 +10,7 @@ export default function App() {
   const [allWaves, setAllWaves] = React.useState([]);
   const [inputText, setinputText] = React.useState("");
 
-  const contractAddress = "0x90422E95fDCc6A5dC2e047c774E0968dFeFB38ae";
+  const contractAddress = "0x58DAd51bAF2069b4e1B3F42924880c961654E3Ea";
   const contractABI = abi.abi;
 
   const getAllWaves = async () => {
@@ -22,17 +23,27 @@ export default function App() {
 
         const waves = await wavePortalContract.getAllWaves();
 
-        let wavesCleaned = [];
-
-        waves.forEach((wave) => {
-          wavesCleaned.push({
+        const wavesCleaned = waves.map((wave) => {
+          return {
             address: wave.waver,
             timestamp: new Date(wave.timestamp * 1000),
             message: wave.message,
-          });
+          };
         });
 
         setAllWaves(wavesCleaned);
+
+        wavePortalContract.on("NewWave", (from, timestamp, message) => {
+          console.log("NewWave", from, timestamp, message);
+          setAllWaves((prevState) => [
+            ...prevState,
+            {
+              address: from,
+              timestamp: new Date(timestamp * 1000),
+              message: message,
+            },
+          ]);
+        });
       } else {
         console.log("Ethereum object dosent exist!!");
       }
@@ -71,16 +82,15 @@ export default function App() {
   const wave = async () => {
     try {
       const { ethereum } = window;
-      const provider = new ethers.providers.Web3Provider(ethereum);
-      const signer = provider.getSigner();
-      const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+
       if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+
         let count = await wavePortalContract.getTotalWaves();
         console.log("Retrieved total wave count...", count.toNumber());
 
-        /*
-         * Execute the actual wave from your smart contract
-         */
         const waveTxn = await wavePortalContract.wave(inputText);
         console.log("Mining...", waveTxn.hash);
 
@@ -88,7 +98,6 @@ export default function App() {
         console.log("Mined -- ", waveTxn.hash);
 
         count = await wavePortalContract.getTotalWaves();
-
         console.log("Retrieved total wave count...", count.toNumber());
       } else {
         console.log("Ethereum object doesn't exist!");
@@ -121,8 +130,6 @@ export default function App() {
     checkIfWalletIsConnected();
   }, []);
 
-
-
   const handleInputChnage = (e) => {
     setinputText(e.target.value);
   };
@@ -134,16 +141,22 @@ export default function App() {
         {/* <div className="">Total waves are {totalWaves}</div> */}
 
         <div className="bio">I am RJ Connect your Ethereum wallet and wave at me!</div>
-        <input
-          label="Send me a message, your favourite sptoify song or a meme..."
+        <Input
+          style={{ marginTop: "20px", alignItems: "center", justifyContent: "center" }}
+          label="Send me a message"
           name="Input"
           onChange={(e) => handleInputChnage(e)}
-          state="confirmed"
         />
 
-        <button className="waveButton" onClick={wave}>
-          Wave at Me
-        </button>
+        <Button
+          id="test-button-outline"
+          onClick={wave}
+          text="Wave At ME!!!"
+          theme="outline"
+          type="button"
+          style={{ marginTop: "20px" }}
+        />
+
         {!currentAccount && (
           <button className="waveButton" onClick={connectWallet}>
             Connect Wallet
